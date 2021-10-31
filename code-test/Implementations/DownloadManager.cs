@@ -22,6 +22,7 @@ namespace CodeTest
         private readonly object _syncObject;
         private CancellationTokenSource _source;
         private double _progress;
+        private int _operatingThreads = 0; // special flag, increment if a file is being downloaded (not processed yet), as long as it is >0 or _toBeDownloadedFiles.C>0 operation must continue
 
         // download operation storage
         private readonly Queue<string> _toBeDownloadedFiles;
@@ -96,6 +97,7 @@ namespace CodeTest
             _toBeDownloadedFiles.Clear();
             _tasks.Clear();
             _downloadedFiles.Clear();
+            _operatingThreads = 0;
             _progress = 0;
         }
 
@@ -112,14 +114,15 @@ namespace CodeTest
 
                 InspectSite(indexFile, _siteToDownload);
                 _downloadedFiles.Add(_siteToDownload);
+
+                for (int i = 0; i < threadCount; i++)
+                    _tasks.Add(new Task(DownloadFileThread, _source.Token));
             }
             catch (Exception ex)
             {
                 _fileMgr.TraceError("DownloadSite", ex);
+                throw new Exception("Downloading the index page failed. Operation cannot continue", ex);
             }
-
-            for (int i = 0; i < threadCount; i++)
-                _tasks.Add(new Task(DownloadFileThread, _source.Token));
         }
 
         /// <summary>
@@ -139,29 +142,49 @@ namespace CodeTest
                     // multiple things to check
                     string fileToDownload = PopNewFileFromQueue();
                     if (string.IsNullOrEmpty(fileToDownload))
-                        // no file left
-                        break;
+                    {
+                        // another file download is ongoing, lets wait for it instead of stopping
+                        if (_operatingThreads > 0)
+                        {
+                            // Thread.Sleep is bad but for simplicity I avoid more complex structure to ping all threads if they are waiting already
+                            // MRE can be used to ping threads but for this simple task not so necessary
+                            Thread.Sleep(100);
+                            continue;
+                        }
+                        // there is no file to download, everything seems downloaded, gracefully stop
+                        else break;
+                    }
 
                     // file already downloaded
                     if (_downloadedFiles.Contains(fileToDownload))
                         continue;
 
-                    // where shall we store the file, also sets up the folder structure
-                    string whereToStore = _fileMgr.GetWhereToSaveFile(fileToDownload);
-                    _fileMgr.Trace("Thread [{0}], File: {1}, To-Be-Saved-To: {2}, Downloading...", Thread.CurrentThread.ManagedThreadId, fileToDownload, whereToStore);
-                    byte[] data = _webClient.DownloadFile(fileToDownload, _source.Token);
-                    _fileMgr.Trace("Thread [{0}], File: {1}, {2} bytes downloaded, now saving and inspecting...", Thread.CurrentThread.ManagedThreadId, fileToDownload, data?.Length);
-
-                    // regardless of success, we mark it as downloaded
-                    MarkFileDownloaded(fileToDownload);
-
-                    // we save the file, sometimes some links are queries and we cannot get a response, then data is null, we skip them
-                    if (data != null)
+                    try
                     {
-                        _fileMgr.Save(whereToStore, data);
+                        Interlocked.Increment(ref _operatingThreads);
 
-                        // inspect file to see if there are further files to download, it shall find base of the downloaded file to form the URI
-                        InspectSite(whereToStore, fileToDownload);
+                        // where shall we store the file, also sets up the folder structure
+                        string whereToStore = _fileMgr.GetWhereToSaveFile(fileToDownload);
+                        _fileMgr.Trace("Thread [{0}], File: {1}, To-Be-Saved-To: {2}, Downloading...", Thread.CurrentThread.ManagedThreadId, fileToDownload, whereToStore);
+                        byte[] data = _webClient.DownloadFile(fileToDownload, _source.Token);
+                        _fileMgr.Trace("Thread [{0}], File: {1}, {2} bytes downloaded, now saving and inspecting...", Thread.CurrentThread.ManagedThreadId, fileToDownload, data?.Length);
+
+                        // regardless of success, we mark it as downloaded
+                        MarkFileDownloaded(fileToDownload);
+
+                        // we save the file, sometimes some links are queries and we cannot get a response, then data is null, we skip them
+                        if (data != null)
+                        {
+                            _fileMgr.Save(whereToStore, data);
+
+                            // inspect file to see if there are further files to download, it shall find base of the downloaded file to form the URI
+                            InspectSite(whereToStore, fileToDownload);
+                        }
+                    }
+                    finally
+                    {
+                        // thread moves to next task if there is any
+                        Interlocked.Decrement(ref _operatingThreads);
                     }
                 } while (true);
             }
@@ -211,8 +234,9 @@ namespace CodeTest
                         continue; // special links like google, facebook etc
                     }
 
-                    if (ShouldDownloadFile(fileToDownload))
-                        AddNewFileToQueue(fileToDownload);
+                    string normalized = fileToDownload.Trim().ToLower();
+                    if (ShouldDownloadFile(normalized))
+                        AddNewFileToQueue(normalized);
                 }
             }
             catch (Exception ex)
@@ -242,13 +266,12 @@ namespace CodeTest
         /// <param name="newFile">New file to download</param>
         internal void AddNewFileToQueue(string newFile)
         {
-            string normalized = newFile.Trim().ToLower();
             lock (_syncObject)
             {
-                if (_downloadedFiles.Contains(normalized))
+                if (_downloadedFiles.Contains(newFile))
                     return;
-                if (!_toBeDownloadedFiles.Contains(normalized))
-                    _toBeDownloadedFiles.Enqueue(normalized);
+                if (!_toBeDownloadedFiles.Contains(newFile))
+                    _toBeDownloadedFiles.Enqueue(newFile);
             }
         }
 
@@ -283,7 +306,7 @@ namespace CodeTest
             if (link.StartsWith("../"))
                 return false;
 
-            if (link.ToLower().StartsWith("http") && !link.Contains(_siteToDownload))
+            if (link.StartsWith("http") && !link.Contains(_siteToDownload))
                 return false;
 
             return true;

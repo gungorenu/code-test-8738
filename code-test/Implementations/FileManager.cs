@@ -93,8 +93,16 @@ namespace CodeTest
                     value = value + "index.html";
                 }
 
-                // we also create the folder for the file to store, like recursively
                 string dirPath = System.IO.Path.GetDirectoryName(value);
+
+                // special case, I did not do a special index page creation thingy so SITE/meet and SITE/meet/someone are valid files for me but of course not for windows. 
+                // hack: rename file to XXX.html to open space for folder
+                if (System.IO.File.Exists(dirPath))
+                {
+                    System.IO.File.Move(dirPath, dirPath + ".html");
+                }
+
+                // we also create the folder for the file to store, like recursively
                 System.IO.Directory.CreateDirectory(dirPath);
 
                 return value;
