@@ -10,11 +10,6 @@ namespace CodeTest
     internal interface IConsole
     {
         /// <summary>
-        /// Is verbose open
-        /// </summary>
-        bool IsVerbose { get; set; }
-
-        /// <summary>
         /// Logs into console
         /// </summary>
         /// <param name="color">Console text color</param>

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CodeTest
 {
@@ -10,12 +8,28 @@ namespace CodeTest
     /// <remarks>Comments are on interface</remarks>
     internal class Console : IConsole
     {
-        public bool IsVerbose { get; set; }
+        private object _syncObject;
+
+        public Console()
+        {
+            _syncObject = new object();
+        }
 
         public void Log(ConsoleColor color, string format, params object[] args)
         {
-            System.Console.ForegroundColor = color;
-            System.Console.Write(format, args);
+            lock (_syncObject)
+            {
+                var defaultColor = System.Console.ForegroundColor;
+                try
+                {
+                    System.Console.ForegroundColor = color;
+                    System.Console.Write(format, args);
+                }
+                finally
+                {
+                    System.Console.ForegroundColor = defaultColor;
+                }
+            }
         }
     }
 }

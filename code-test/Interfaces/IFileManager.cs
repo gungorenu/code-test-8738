@@ -41,5 +41,12 @@ namespace CodeTest
         /// <param name="function">Function that failed</param>
         /// <param name="ex">Exception info</param>
         void TraceError(string function, Exception ex);
+
+        /// <summary>
+        /// Reads all file content and returns back for inspection
+        /// </summary>
+        /// <param name="filePath">File path to read from</param>
+        /// <returns>File content as string back</returns>
+        string ReadAllText(string filePath);
     }
 }

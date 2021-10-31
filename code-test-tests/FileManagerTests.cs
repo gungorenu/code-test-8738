@@ -40,7 +40,7 @@ namespace CodeTest_Tests
         }
 
         [Test]
-        public void SaveFileTest_InvalidFilePath_ThrowsException()
+        public void SaveFileTest_InvalidFilePath_NotThrowsException()
         {
             // arrange
             IFileManager fileMgr = new FileManager();
@@ -48,7 +48,7 @@ namespace CodeTest_Tests
             // act
             // assert
             string filePath = Path.Combine(_testPath, "rand?\\/!!\",.com");
-            Assert.Throws<IOException>(() => fileMgr.Save(filePath, new byte[10]), "Invalid file path, expected an error");
+            Assert.DoesNotThrow(() => fileMgr.Save(filePath, new byte[10]), "Invalid file path should not throw exc anymore");
         }
 
         [Test]
@@ -80,7 +80,7 @@ namespace CodeTest_Tests
 
             // assert
             string data = System.IO.File.ReadAllText(traceFile).Trim();
-            Assert.AreEqual("my fancy 10 message", data);
+            Assert.AreEqual(string.Format("[T#{0}] my fancy 10 message", System.Threading.Thread.CurrentThread.ManagedThreadId), data);
         }
 
         [Test]
