@@ -31,5 +31,6 @@ namespace CodeTest
     {
         Queue<string> ToBeDownloadedFiles { get; }
         HashSet<string> DownloadedFiles { get; }
+        string Site { get; set; }
     }
 }

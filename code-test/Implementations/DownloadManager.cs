@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -100,9 +101,7 @@ namespace CodeTest
 
         internal void Initialize(string site, int threadCount)
         {
-            _siteToDownload = site;
-            if (!_siteToDownload.EndsWith("/"))
-                _siteToDownload += "/";
+            _siteToDownload = NormalizeWebSite(site);
 
             try
             {
@@ -111,7 +110,7 @@ namespace CodeTest
                 string indexFile = _fileMgr.GetWhereToSaveFile(_siteToDownload + "index.html");
                 _fileMgr.Save(indexFile, indexData);
 
-                InspectSite(indexFile);
+                InspectSite(indexFile, _siteToDownload);
                 _downloadedFiles.Add(_siteToDownload);
             }
             catch (Exception ex)
@@ -128,16 +127,52 @@ namespace CodeTest
         /// </summary>
         internal void DownloadFileThread()
         {
-
+            // TODO
         }
 
         /// <summary>
         /// Inspects given file and adds more files to download if necessary
         /// </summary>
-        /// <param name="file">Full filepath</param>
-        internal void InspectSite(string fileToCheck)
+        /// <param name="fileToCheck">Full filepath</param>
+        /// <param name="base">Base folder, needed for recursiveness</param>
+        internal void InspectSite(string fileToCheck, string @base)
         {
-            // TODO
+            try
+            {
+                string content =  _fileMgr.ReadAllText(fileToCheck);
+                string baseLink = @base;
+                if (!baseLink.EndsWith("/"))
+                {
+                    baseLink = baseLink.Substring(0, baseLink.IndexOf("/"));
+                }
+
+                // simple regex to find all "href" links
+                MatchCollection listingMatches = Regex.Matches(content, "(?<=href=(\"|'))(.+?)(?=(\"|'))", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                foreach (Match m in listingMatches)
+                {
+                    string fileToDownload = "";
+
+                    if (m.Value.StartsWith("/"))
+                    {
+                        fileToDownload = _siteToDownload + m.Value.Substring(1);
+                    }
+                    else if (m.Value.StartsWith(_siteToDownload))
+                    {
+                        fileToDownload = m.Value;
+                    }
+                    else
+                    {
+                        continue; // special links like google, facebook etc
+                    }
+
+                    if (ShouldDownloadFile(fileToDownload))
+                        AddNewFileToQueue(fileToDownload);
+                }
+            }
+            catch (Exception ex)
+            {
+                _fileMgr.TraceError("InspectSite", ex);
+            }
         }
 
         /// <summary>
@@ -171,6 +206,43 @@ namespace CodeTest
             }
         }
 
+        /// <summary>
+        /// Normalizes the given web site for the first inspection
+        /// </summary>
+        /// <param name="site">Site to download</param>
+        /// <returns>Normalized website, minor corrections</returns>
+        internal string NormalizeWebSite(string site)
+        {
+            string value = site.ToLower();
+            if (!value.EndsWith("/"))
+                value += "/";
+
+            if (!value.StartsWith("http://") && !value.StartsWith("https://"))
+                value = "http://" + value;
+
+            return value;
+        }
+
+        /// <summary>
+        /// Filters the link if it is supposed to be downloaded or skipped
+        /// </summary>
+        /// <param name="link">File link</param>
+        /// <returns>True if should be downloaded</returns>
+        /// SPECIAL NOTE: I skip ../ links. it requires additional logic to ensure a file is downloaded once only
+        internal bool ShouldDownloadFile(string link)
+        {
+            if (!link.StartsWith("/") && !link.Contains(_siteToDownload))
+                return false;
+
+            if (link.StartsWith("../"))
+                return false;
+
+            if (link.ToLower().StartsWith("http") && !link.Contains(_siteToDownload))
+                return false;
+
+            return true;
+        }
+
         #endregion
 
         #region IDownloadManagerTesting Members
@@ -179,6 +251,7 @@ namespace CodeTest
 
         HashSet<string> IDownloadManagerTesting.DownloadedFiles => _downloadedFiles;
 
+        string IDownloadManagerTesting.Site { get => _siteToDownload; set => _siteToDownload = value; }
         #endregion
 
     }
