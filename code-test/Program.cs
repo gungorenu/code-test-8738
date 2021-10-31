@@ -10,8 +10,10 @@ namespace CodeTest
         {
             try
             {
+                string storage = System.IO.Path.Combine(Environment.CurrentDirectory, "storage");
+
                 IConsole console = new Console();
-                IFileManager fileMgr = new FileManager();
+                IFileManager fileMgr = new FileManager(storage);
                 IWebClient webClient = new WebClient(fileMgr);
                 IDownloadManager downloadMgr = new DownloadManager(console, fileMgr, webClient);
 
@@ -20,13 +22,13 @@ namespace CodeTest
                 System.Console.WriteLine("Enter thread count (integer): ");
                 string value = System.Console.ReadLine();
                 int threadCount = 0;
-                if(! int.TryParse(value, out threadCount))
+                if (!int.TryParse(value, out threadCount))
                 {
                     System.Console.WriteLine("Invalid integer type");
                     return;
                 }
 
-                downloadMgr.DownloadSite(site, threadCount, System.IO.Path.Combine( Environment.CurrentDirectory , "storage") );
+                downloadMgr.DownloadSite(site, threadCount);
             }
             catch (Exception ex)
             {

@@ -13,11 +13,22 @@ namespace CodeTest
     {
         private readonly object _syncObject;
 
-        public string BaseFolder => Environment.CurrentDirectory.Trim('\\') + "\\"; // always has trailing slash at end
+        public string BaseFolder { get; private set; }
         internal string TraceFile => System.IO.Path.Combine(BaseFolder, "trace.log");
 
-        public FileManager()
+        public FileManager(string baseFolder)
         {
+            if (string.IsNullOrEmpty(baseFolder))
+                throw new ArgumentNullException(nameof(baseFolder));
+
+            // let it fail if it has IO exception due to incorrect path etc
+            if ( System.IO.Directory.Exists(baseFolder))
+            {
+                System.IO.Directory.Delete(baseFolder, true); // we shall create it again later
+            }
+            System.IO.Directory.CreateDirectory(baseFolder);
+
+            BaseFolder = baseFolder.Trim('\\') + "\\"; // always has trailing slash at end
             _syncObject = new object();
         }
 
@@ -65,7 +76,7 @@ namespace CodeTest
                 // regex, I assume the file to download should always be a http://something.com like link so I try to get the something.com as file name
                 // it can be also http://something.com/images/exit.png which should be fine and should get something.com/images/exit.png
                 // NOTE: I ignore valid file path check here, it is too much of work to understand what is accepted or not
-                MatchCollection listingMatches = Regex.Matches(fileToDownload, "(?<=\\/\\/).*", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                MatchCollection listingMatches = Regex.Matches(fileToDownload, "(?<=\\/\\/)[^\\?]*", RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
                 string value = fileToDownload;
                 if (listingMatches.Count > 0)
@@ -75,6 +86,12 @@ namespace CodeTest
 
                 value = value.Replace('/', '\\');
                 value = BaseFolder + value.TrimStart('\\'); // this is file path, trim the path if it has \ already to avoid double slash
+
+                // special case, link is to a folder and we shall try to create a file with a / at end. instead lets make it index.html under that folder
+                if (value.EndsWith("\\"))
+                {
+                    value = value + "index.html";
+                }
 
                 // we also create the folder for the file to store, like recursively
                 string dirPath = System.IO.Path.GetDirectoryName(value);

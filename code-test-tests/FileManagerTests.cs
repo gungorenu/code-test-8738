@@ -20,7 +20,7 @@ namespace CodeTest_Tests
 
             System.IO.Directory.CreateDirectory(dirPath);
 
-            _testPath = dirPath;
+            _testPath = dirPath.TrimEnd('\\') + "\\";
         }
 
 
@@ -28,7 +28,7 @@ namespace CodeTest_Tests
         public void SaveFileTest_SunnyDay()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             string filePath = Path.Combine(_testPath, "SaveFileTest_SunnyDay");
@@ -43,7 +43,7 @@ namespace CodeTest_Tests
         public void SaveFileTest_InvalidFilePath_NotThrowsException()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             // assert
@@ -55,7 +55,7 @@ namespace CodeTest_Tests
         public void SaveFile_NullChecks()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             // assert
@@ -69,7 +69,7 @@ namespace CodeTest_Tests
         public void Trace_LogMessage()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
             string traceFile = ((FileManager)fileMgr).TraceFile;
             System.IO.File.Delete(traceFile);
 
@@ -87,13 +87,13 @@ namespace CodeTest_Tests
         public void WhereToSave_BasicCheck()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             string result = fileMgr.GetWhereToSaveFile("http://www.google.com/");
 
             // assert
-            string expected = System.Environment.CurrentDirectory + "\\www.google.com\\";
+            string expected = Path.Combine( _testPath , "www.google.com\\index.html");
             Assert.AreEqual(expected, result, "Base folder could not be calculated properly");
         }
 
@@ -101,13 +101,13 @@ namespace CodeTest_Tests
         public void WhereToSave_SubPath()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             string result = fileMgr.GetWhereToSaveFile("http://www.google.com/images");
 
             // assert
-            string expected = System.Environment.CurrentDirectory + "\\www.google.com\\images";
+            string expected = Path.Combine(_testPath, "www.google.com\\images");
             Assert.AreEqual(expected, result, "Nested folder could not be calculated properly");
         }
 
@@ -115,13 +115,13 @@ namespace CodeTest_Tests
         public void WhereToSave_SubPath_WithoutBase_BaseAdded()
         {
             // arrange
-            IFileManager fileMgr = new FileManager();
+            IFileManager fileMgr = new FileManager(_testPath);
 
             // act
             string result = fileMgr.GetWhereToSaveFile("/images");
 
             // assert
-            string expected = System.Environment.CurrentDirectory + "\\images";
+            string expected = Path.Combine(_testPath, "images");
             Assert.AreEqual(expected, result, "SubPath without base could not be calculated properly");
         }
 
@@ -130,5 +130,25 @@ namespace CodeTest_Tests
         {
             // skipping due to time constraints
         }
+
+        [Test]
+        public void Constructor_SunnyDay()
+        {
+            // skipping due to time constraints
+        }
+
+        [Test]
+        public void Constructor_InvalidFolder_ThrowsException()
+        {
+            // skipping due to time constraints
+        }
+
+        [Test]
+        public void Constructor_TextChangesOnBaseFolder_EndsWithSlash()
+        {
+            // skipping due to time constraints
+        }
+
+
     }
 }

@@ -52,7 +52,7 @@ namespace CodeTest
             _downloadedFiles = new HashSet<string>();
         }
 
-        public void DownloadSite(string site, int threadCount, string folder)
+        public void DownloadSite(string site, int threadCount)
         {
             if (string.IsNullOrEmpty(site))
                 throw new ArgumentNullException(nameof(site));
@@ -118,8 +118,8 @@ namespace CodeTest
                 _fileMgr.TraceError("DownloadSite", ex);
             }
 
-            //for (int i = 0; i < threadCount; i++)
-            //    _tasks.Add(new Task(DownloadFileThread, _source.Token));
+            for (int i = 0; i < threadCount; i++)
+                _tasks.Add(new Task(DownloadFileThread, _source.Token));
         }
 
         /// <summary>
@@ -127,7 +127,53 @@ namespace CodeTest
         /// </summary>
         internal void DownloadFileThread()
         {
-            // TODO
+            try
+            {
+                // our thread loop
+                do
+                {
+                    // operation cancelled
+                    if (_source.Token.IsCancellationRequested)
+                        break;
+
+                    // multiple things to check
+                    string fileToDownload = PopNewFileFromQueue();
+                    if (string.IsNullOrEmpty(fileToDownload))
+                        // no file left
+                        break;
+
+                    // file already downloaded
+                    if (_downloadedFiles.Contains(fileToDownload))
+                        continue;
+
+                    // where shall we store the file, also sets up the folder structure
+                    string whereToStore = _fileMgr.GetWhereToSaveFile(fileToDownload);
+                    _fileMgr.Trace("Thread [{0}], File: {1}, To-Be-Saved-To: {2}, Downloading...", Thread.CurrentThread.ManagedThreadId, fileToDownload, whereToStore);
+                    byte[] data = _webClient.DownloadFile(fileToDownload, _source.Token);
+                    _fileMgr.Trace("Thread [{0}], File: {1}, {2} bytes downloaded, now saving and inspecting...", Thread.CurrentThread.ManagedThreadId, fileToDownload, data?.Length);
+
+                    // regardless of success, we mark it as downloaded
+                    MarkFileDownloaded(fileToDownload);
+
+                    // we save the file, sometimes some links are queries and we cannot get a response, then data is null, we skip them
+                    if (data != null)
+                    {
+                        _fileMgr.Save(whereToStore, data);
+
+                        // inspect file to see if there are further files to download, it shall find base of the downloaded file to form the URI
+                        InspectSite(whereToStore, fileToDownload);
+                    }
+                } while (true);
+            }
+            catch (OperationCanceledException)
+            {
+                // cancellation token ticked
+            }
+            catch (Exception ex)
+            {
+                _fileMgr.Trace("DownloadFileThread encountered an error which caused thread to stop. Witness me brother!");
+                _fileMgr.TraceError("DownloadFileThread", ex);
+            }
         }
 
         /// <summary>
@@ -139,7 +185,7 @@ namespace CodeTest
         {
             try
             {
-                string content =  _fileMgr.ReadAllText(fileToCheck);
+                string content = _fileMgr.ReadAllText(fileToCheck);
                 string baseLink = @base;
                 if (!baseLink.EndsWith("/"))
                 {
@@ -241,6 +287,28 @@ namespace CodeTest
                 return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// Update progress on console
+        /// </summary>
+        /// <param name="message">Message, like file downloaded etc</param>
+        internal void ProgressUpdate(string message = null)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// Mark a file downloaded, handle collections and update progress
+        /// </summary>
+        /// <param name="fileToDownload">File full URI</param>
+        internal void MarkFileDownloaded(string fileToDownload)
+        {
+            lock (_syncObject)
+            {
+                _downloadedFiles.Add(fileToDownload);
+            }
+            ProgressUpdate(fileToDownload);
         }
 
         #endregion

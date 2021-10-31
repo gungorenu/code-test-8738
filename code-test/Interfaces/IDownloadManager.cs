@@ -20,8 +20,7 @@ namespace CodeTest
         /// </summary>
         /// <param name="site">Site to download/traverse</param>
         /// <param name="threadCount">Thread count since it is parallel</param>
-        /// <param name="folder">Folder to save into</param>
-        void DownloadSite(string site, int threadCount, string folder);
+        void DownloadSite(string site, int threadCount);
     }
 
     /// <summary>
