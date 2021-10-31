@@ -69,9 +69,8 @@ namespace CodeTest_Tests
             fake.AddNewFileToQueue("FILE1");
 
             // assert
-            Assert.AreEqual(1, ((IDownloadManagerTesting)fake).ToBeDownloadedFiles.Count, "List must have 1 file only");
+            Assert.AreEqual(2, ((IDownloadManagerTesting)fake).ToBeDownloadedFiles.Count, "Function does not do normalization again. Inspect is supposed to do that");
         }
-
 
         [Test]
         public void DownloadedFiles_CannotBeAddedAgain()
