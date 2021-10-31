@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace CodeTest
 {
@@ -25,6 +23,5 @@ namespace CodeTest
         /// <param name="args">Console message arguments</param>
         /// <remarks>Difference from Log is rewriting on line start</remarks>
         void Progress(ConsoleColor color, string format, params object[] args);
-
     }
 }

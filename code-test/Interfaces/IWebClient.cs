@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 
 namespace CodeTest
 {
@@ -16,6 +13,6 @@ namespace CodeTest
         /// <param name="fileToDownload">File to download (web URI)</param>
         /// <param name="token">Token for cancellation</param>
         /// <returns>Data downloaded or null if error occurs</returns>
-        byte[] DownloadFile(string fileToDownload, CancellationToken token = default(CancellationToken));
+        byte[] DownloadFile(string fileToDownload, CancellationToken token = default);
     }
 }

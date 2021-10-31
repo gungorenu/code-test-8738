@@ -90,7 +90,7 @@ namespace CodeTest
                 // special case, link is to a folder and we shall try to create a file with a / at end. instead lets make it index.html under that folder
                 if (value.EndsWith("\\"))
                 {
-                    value = value + "index.html";
+                    value += "index.html";
                 }
 
                 string dirPath = System.IO.Path.GetDirectoryName(value);

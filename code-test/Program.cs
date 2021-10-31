@@ -21,14 +21,16 @@ namespace CodeTest
                 string site = System.Console.ReadLine();
                 System.Console.WriteLine("Enter thread count (integer): ");
                 string value = System.Console.ReadLine();
-                int threadCount = 0;
-                if (!int.TryParse(value, out threadCount))
+                if (!int.TryParse(value, out int threadCount))
                 {
                     System.Console.WriteLine("Invalid integer type");
                     return;
                 }
 
                 downloadMgr.DownloadSite(site, threadCount);
+
+                System.Console.WriteLine("\r\nPress enter to exit application...");
+                System.Console.ReadLine();
             }
             catch (Exception ex)
             {

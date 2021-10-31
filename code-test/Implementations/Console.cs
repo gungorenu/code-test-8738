@@ -8,7 +8,7 @@ namespace CodeTest
     /// <remarks>Comments are on interface</remarks>
     internal class Console : IConsole
     {
-        private object _syncObject;
+        private readonly object _syncObject;
 
         public Console()
         {

@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +23,8 @@ namespace CodeTest
         // syncobjects
         private readonly object _syncObject;
         private CancellationTokenSource _source;
-        private double _progress;
         private int _operatingThreads = 0; // special flag, increment if a file is being downloaded (not processed yet), as long as it is >0 or _toBeDownloadedFiles.C>0 operation must continue
+        private bool _inProgress = false;
 
         // download operation storage
         private readonly Queue<string> _toBeDownloadedFiles;
@@ -60,26 +62,54 @@ namespace CodeTest
             if (threadCount < 1 || threadCount > 100)
                 throw new ArgumentException("Thread count is invalid, enter a number between 1 and 100");
 
-            Reset();
-            Initialize(site, threadCount);
+            if (_inProgress)
+                return;
 
-            // lets calculate how long it takes
-            System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
-            watch.Start();
+            _inProgress = true;
+
+            Task listener = null;
             try
             {
+                Reset();
+                Initialize(site, threadCount);
+
+                // lets calculate how long it takes
+                System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+                watch.Start();
+                listener = Task.Factory.StartNew(ListenCancellationThread);
+
                 // set up the progress bar
-                _console.Log(ConsoleColor.Green, "Starting download process...\n");
+                _console.Log(ConsoleColor.Magenta, "Press enter key to stop operation\n");
                 ProgressUpdate();
 
                 _tasks.ForEach((t) => t.Start());
 
                 Task.WaitAll(_tasks.ToArray(), Token);
                 _source.Cancel();
+                Stop();
                 _console.Log(ConsoleColor.Green, "\r\nAll done in {0} seconds! Terminating...\n", watch.ElapsedMilliseconds / 1000);
             }
             catch (OperationCanceledException)
-            { }
+            {
+                // some tasks are still downloading and cancellation called but we have to wait
+                do
+                {
+                    // I COULD NOT DO THIS CANCELLATION PART
+                    // main issue is to wait for others to wait to finalize gracefully. I do not know a better way to wait for them to finalize themselves
+                    // in fact all necessary cancellation signals have been sent so just waiting
+                    Thread.Sleep(250);
+                } while (_tasks.Any(t => !t.IsCanceled && !t.IsCompleted));
+            }
+            finally
+            {
+                _inProgress = false;
+
+                // dirty trick, we need to dispose listener as well but should not wait for it because of Console.Readline behavior
+                if (listener != null)
+                {
+                    _tasks.Add(listener);
+                }
+            }
         }
 
         #region IDisposable
@@ -105,7 +135,6 @@ namespace CodeTest
             _tasks.Clear();
             _downloadedFiles.Clear();
             _operatingThreads = 0;
-            _progress = 0;
         }
 
         internal void Initialize(string site, int threadCount)
@@ -124,6 +153,8 @@ namespace CodeTest
 
                 for (int i = 0; i < threadCount; i++)
                     _tasks.Add(new Task(DownloadFileThread, _source.Token));
+
+                _console.Log(ConsoleColor.Green, "Site inspection completed. Starting download process...");
             }
             catch (Exception ex)
             {
@@ -334,14 +365,14 @@ namespace CodeTest
             }
 
             double progress = (20 * current) / total; // it is calculated, not incremented. we know how many files we downloaded and we shall but one problem is dynamic files
-             // for simplicity I do one x per %5
-            // at every file download we might add to our progress so the target file count can also increase
+                                                      // for simplicity I do one x per %5
+                                                      // at every file download we might add to our progress so the target file count can also increase
             int progressIndicator = Convert.ToInt32(Math.Floor(progress));
-            _console.Progress(ConsoleColor.Cyan, "\r..: {0}/{1} :.. [{2}{3}] {4}", 
+            _console.Progress(ConsoleColor.Cyan, "\r..: {0}/{1} :.. [{2}{3}] {4}",
                 current,
                 total,
-                new string('x', progressIndicator), 
-                new string(' ', 20 - progressIndicator), 
+                new string('x', progressIndicator),
+                new string(' ', 20 - progressIndicator),
                 message);
         }
 
@@ -358,6 +389,49 @@ namespace CodeTest
             ProgressUpdate(fileToDownload);
         }
 
+        /// <summary>
+        /// Console readline thread, to cancel entire operation
+        /// </summary>
+        internal void ListenCancellationThread()
+        {
+            try
+            {
+                var str = System.Console.ReadLine();
+                if (!_source.IsCancellationRequested)
+                {
+                    _source.Cancel();
+                    _console.Log(ConsoleColor.Yellow, "\r\nOperation cancelled by user! Terminating...\n");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // cancelled
+            }
+            catch (Exception ex)
+            {
+                _fileMgr.TraceError("ListenCancellationThread", ex);
+            }
+        }
+
+        #endregion
+
+        #region Concole.Readline() Cancellor
+        // below is not my solution, tested briefly, may fail to do what is required
+
+        [DllImport("User32.Dll", EntryPoint = "PostMessageA")]
+        private static extern bool PostMessage(IntPtr hWnd, uint msg, int wParam, int lParam);
+
+        const int VK_RETURN = 0x0D;
+        const int WM_KEYDOWN = 0x100;
+
+        /// <summary>
+        /// Stops download operations by triggering cancel thread which shall trigger cancellation token
+        /// </summary>
+        public void Stop()
+        {
+            var hWnd = System.Diagnostics.Process.GetCurrentProcess().MainWindowHandle;
+            PostMessage(hWnd, WM_KEYDOWN, VK_RETURN, 0);
+        }
         #endregion
 
         #region IDownloadManagerTesting Members
