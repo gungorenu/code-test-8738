@@ -23,4 +23,13 @@ namespace CodeTest
         /// <param name="folder">Folder to save into</param>
         void DownloadSite(string site, int threadCount, string folder);
     }
+
+    /// <summary>
+    /// Used only for testing
+    /// </summary>
+    internal interface IDownloadManagerTesting
+    {
+        Queue<string> ToBeDownloadedFiles { get; }
+        HashSet<string> DownloadedFiles { get; }
+    }
 }

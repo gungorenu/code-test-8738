@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 using CodeTest;
 using Moq;
 using NUnit.Framework;
@@ -50,10 +47,8 @@ namespace CodeTest_Tests
             IWebClient client = new WebClient(fileMgr.Object);
             using (var source = new CancellationTokenSource())
             {
-                client.Token = source.Token;
-
                 // act
-                var data = client.DownloadFile("http://www.google.com");
+                var data = client.DownloadFile("http://www.google.com", source.Token);
 
                 // assert
                 Assert.IsNotNull(data, "Got null data from google.com");

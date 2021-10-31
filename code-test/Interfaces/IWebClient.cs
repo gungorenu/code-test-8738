@@ -14,13 +14,8 @@ namespace CodeTest
         /// Downloads given file and returns data
         /// </summary>
         /// <param name="fileToDownload">File to download (web URI)</param>
+        /// <param name="token">Token for cancellation</param>
         /// <returns>Data downloaded or null if error occurs</returns>
-        byte[] DownloadFile(string fileToDownload);
-
-        /// <summary>
-        /// Cancellation token that shall be used
-        /// </summary>
-        /// <remarks>Can be null</remarks>
-        CancellationToken Token { get; set; }
+        byte[] DownloadFile(string fileToDownload, CancellationToken token = default(CancellationToken));
     }
 }

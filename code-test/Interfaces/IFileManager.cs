@@ -22,6 +22,13 @@ namespace CodeTest
         void Save(string fileLocation, byte[] data); // data type?
 
         /// <summary>
+        /// Calculates where the file should be downloaded to, handles necessary path issues (/ and \ changes)
+        /// </summary>
+        /// <param name="fileToDownload">File Uri we are about to download</param>
+        /// <returns>A path that can be used to download the file and store at</returns>
+        string GetWhereToSaveFile(string fileToDownload);
+
+        /// <summary>
         /// Trace info, since console shall not be used for internal information
         /// </summary>
         /// <param name="format">Message format</param>

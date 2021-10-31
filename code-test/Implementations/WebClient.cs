@@ -26,9 +26,7 @@ namespace CodeTest
             _fileManager = fileMgr;
         }
 
-        public CancellationToken Token { get; set; }
-
-        public byte[] DownloadFile(string fileToDownload)
+        public byte[] DownloadFile(string fileToDownload, CancellationToken token)
         {
             byte[] data = null;
             try
@@ -36,13 +34,13 @@ namespace CodeTest
                 using (var client = new System.Net.WebClient())
                 {
                     // token can be null, should just work fine
-                    if (Token == null)
+                    if (token == null)
                     {
                         return client.DownloadData(new Uri(fileToDownload));
                     }
                     else
                     {
-                        using (var reg = Token.Register(() => client.CancelAsync()))
+                        using (var reg = token.Register(() => client.CancelAsync()))
                         {
                             data = client.DownloadData(new Uri(fileToDownload));
                             return data;

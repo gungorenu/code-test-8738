@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,7 +9,7 @@ namespace CodeTest
     /// Console handler
     /// </summary>
     /// <remarks>Comments are on interface</remarks>
-    internal class DownloadManager : IDownloadManager
+    internal class DownloadManager : IDownloadManager, IDownloadManagerTesting
     {
         #region Fields
         // referenced helpers
@@ -44,6 +42,7 @@ namespace CodeTest
 
             _console = console;
             _fileMgr = fileMgr;
+            _webClient = webClient;
 
             _source = new CancellationTokenSource();
             _syncObject = new object();
@@ -54,10 +53,24 @@ namespace CodeTest
 
         public void DownloadSite(string site, int threadCount, string folder)
         {
-            _console.Log(ConsoleColor.Gray, "Downloading site '{0}' with {1} threads", site, threadCount);
-            _siteToDownload = site;
-            // TODO
-            //throw new NotImplementedException();
+            if (string.IsNullOrEmpty(site))
+                throw new ArgumentNullException(nameof(site));
+            if (threadCount < 1 || threadCount > 100)
+                throw new ArgumentException("Thread count is invalid, enter a number between 1 and 100");
+
+            Reset();
+            Initialize(site, threadCount);
+
+            try
+            {
+                _tasks.ForEach((t) => t.Start());
+
+                Task.WaitAll(_tasks.ToArray(), Token);
+                _source.Cancel();
+                _console.Log(ConsoleColor.Green, "\r\nAll done! Terminating...\n");
+            }
+            catch (OperationCanceledException)
+            { }
         }
 
         #region IDisposable
@@ -85,7 +98,88 @@ namespace CodeTest
             _progress = 0;
         }
 
+        internal void Initialize(string site, int threadCount)
+        {
+            _siteToDownload = site;
+            if (!_siteToDownload.EndsWith("/"))
+                _siteToDownload += "/";
+
+            try
+            {
+                // first file is not async call
+                byte[] indexData = _webClient.DownloadFile(_siteToDownload, Token);
+                string indexFile = _fileMgr.GetWhereToSaveFile(_siteToDownload + "index.html");
+                _fileMgr.Save(indexFile, indexData);
+
+                InspectSite(indexFile);
+                _downloadedFiles.Add(_siteToDownload);
+            }
+            catch (Exception ex)
+            {
+                _fileMgr.TraceError("DownloadSite", ex);
+            }
+
+            //for (int i = 0; i < threadCount; i++)
+            //    _tasks.Add(new Task(DownloadFileThread, _source.Token));
+        }
+
+        /// <summary>
+        /// Worker thread
+        /// </summary>
+        internal void DownloadFileThread()
+        {
+
+        }
+
+        /// <summary>
+        /// Inspects given file and adds more files to download if necessary
+        /// </summary>
+        /// <param name="file">Full filepath</param>
+        internal void InspectSite(string fileToCheck)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// Gets new file to download, for worker threads
+        /// </summary>
+        /// <returns>New file to download (uri)</returns>
+        internal string PopNewFileFromQueue()
+        {
+            lock (_syncObject)
+            {
+                if (_toBeDownloadedFiles.Count == 0)
+                    return null;
+                else
+                    return _toBeDownloadedFiles.Dequeue();
+            }
+        }
+
+        /// <summary>
+        /// Adds new file to download list, assuming we did not download it before
+        /// </summary>
+        /// <param name="newFile">New file to download</param>
+        internal void AddNewFileToQueue(string newFile)
+        {
+            string normalized = newFile.Trim().ToLower();
+            lock (_syncObject)
+            {
+                if (_downloadedFiles.Contains(normalized))
+                    return;
+                if (!_toBeDownloadedFiles.Contains(normalized))
+                    _toBeDownloadedFiles.Enqueue(normalized);
+            }
+        }
 
         #endregion
+
+        #region IDownloadManagerTesting Members
+
+        Queue<string> IDownloadManagerTesting.ToBeDownloadedFiles => _toBeDownloadedFiles;
+
+        HashSet<string> IDownloadManagerTesting.DownloadedFiles => _downloadedFiles;
+
+        #endregion
+
     }
 }

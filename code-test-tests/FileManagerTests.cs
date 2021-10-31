@@ -83,6 +83,52 @@ namespace CodeTest_Tests
             Assert.AreEqual("my fancy 10 message", data);
         }
 
+        [Test]
+        public void WhereToSave_BasicCheck()
+        {
+            // arrange
+            IFileManager fileMgr = new FileManager();
 
+            // act
+            string result = fileMgr.GetWhereToSaveFile("http://www.google.com/");
+
+            // assert
+            string expected = System.Environment.CurrentDirectory + "\\www.google.com\\";
+            Assert.AreEqual(expected, result, "Base folder could not be calculated properly");
+        }
+
+        [Test]
+        public void WhereToSave_SubPath()
+        {
+            // arrange
+            IFileManager fileMgr = new FileManager();
+
+            // act
+            string result = fileMgr.GetWhereToSaveFile("http://www.google.com/images");
+
+            // assert
+            string expected = System.Environment.CurrentDirectory + "\\www.google.com\\images";
+            Assert.AreEqual(expected, result, "Nested folder could not be calculated properly");
+        }
+
+        [Test]
+        public void WhereToSave_SubPath_WithoutBase_BaseAdded()
+        {
+            // arrange
+            IFileManager fileMgr = new FileManager();
+
+            // act
+            string result = fileMgr.GetWhereToSaveFile("/images");
+
+            // assert
+            string expected = System.Environment.CurrentDirectory + "\\images";
+            Assert.AreEqual(expected, result, "SubPath without base could not be calculated properly");
+        }
+
+        [Test]
+        public void WhereToSave_SubPath_CreatesFolderStructure()
+        {
+            // skipping due to time constraints
+        }
     }
 }
