@@ -17,10 +17,8 @@ namespace CodeTest_Tests
             {
                 System.IO.Directory.Delete(dirPath, true);
             }
-            else
-            {
-                System.IO.Directory.CreateDirectory(dirPath);
-            }
+
+            System.IO.Directory.CreateDirectory(dirPath);
 
             _testPath = dirPath;
         }
@@ -48,11 +46,43 @@ namespace CodeTest_Tests
             IFileManager fileMgr = new FileManager();
 
             // act
+            // assert
             string filePath = Path.Combine(_testPath, "rand?\\/!!\",.com");
+            Assert.Throws<IOException>(() => fileMgr.Save(filePath, new byte[10]), "Invalid file path, expected an error");
+        }
+
+        [Test]
+        public void SaveFile_NullChecks()
+        {
+            // arrange
+            IFileManager fileMgr = new FileManager();
+
+            // act
+            // assert
+            Assert.Throws<ArgumentNullException>(() => fileMgr.Save(null, new byte[10]), "File path null");
+            string filePath = Path.Combine(_testPath, "SaveFile_NullChecks");
+            Assert.Throws<ArgumentNullException>(() => fileMgr.Save(filePath, null), "Data null");
+        }
+
+
+        [Test]
+        public void Trace_LogMessage()
+        {
+            // arrange
+            IFileManager fileMgr = new FileManager();
+            string traceFile = ((FileManager)fileMgr).TraceFile;
+            System.IO.File.Delete(traceFile);
+
+            // act
+            string message = "my fancy {0} message";
+            int number = 10;
+            fileMgr.Trace(message, number);
 
             // assert
-            Assert.Throws<Exception>(() => fileMgr.Save(filePath, new byte[10]), "Invalid file path, expected an error");
+            string data = System.IO.File.ReadAllText(traceFile).Trim();
+            Assert.AreEqual("my fancy 10 message", data);
         }
+
 
     }
 }
