@@ -56,3 +56,11 @@ Progress bar? (it is required)
 
 Cancel on enter (it is not mentioned/required)
 
+# Final Changes Compared to Above
+
+Below are some final last minute changes
+
+- Cancel on enter added. but not working %100. leaving as is
+- Progress bar looks weird because of the files I refuse to download. some files/URIs require work to transform them into windows env but I opted not to spend time on it so progress bar at first shall increase but then decrease.
+- storage is not entered from console but works at *Environment.CurrentDirectory* and creates a folder called storage. 
+- a log file is used for internal logging since console is tricky to interact during progress updates
