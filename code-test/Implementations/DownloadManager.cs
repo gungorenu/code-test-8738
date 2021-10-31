@@ -63,13 +63,20 @@ namespace CodeTest
             Reset();
             Initialize(site, threadCount);
 
+            // lets calculate how long it takes
+            System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
             try
             {
+                // set up the progress bar
+                _console.Log(ConsoleColor.Green, "Starting download process...\n");
+                ProgressUpdate();
+
                 _tasks.ForEach((t) => t.Start());
 
                 Task.WaitAll(_tasks.ToArray(), Token);
                 _source.Cancel();
-                _console.Log(ConsoleColor.Green, "\r\nAll done! Terminating...\n");
+                _console.Log(ConsoleColor.Green, "\r\nAll done in {0} seconds! Terminating...\n", watch.ElapsedMilliseconds / 1000);
             }
             catch (OperationCanceledException)
             { }
@@ -216,7 +223,7 @@ namespace CodeTest
                 }
 
                 // simple regex to find all "href" links
-                MatchCollection listingMatches = Regex.Matches(content, "(?<=href=(\"|'))(.+?)(?=(\"|'))", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                MatchCollection listingMatches = Regex.Matches(content, "(?<=href=(\\\"|'))(.+?)(?=(\\\"|'|\\?))", RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 foreach (Match m in listingMatches)
                 {
                     string fileToDownload = "";
@@ -318,7 +325,24 @@ namespace CodeTest
         /// <param name="message">Message, like file downloaded etc</param>
         internal void ProgressUpdate(string message = null)
         {
-            // TODO
+            int current = 0;
+            int total = 0;
+            lock (_syncObject)
+            {
+                current = _downloadedFiles.Count;
+                total = _downloadedFiles.Count + _toBeDownloadedFiles.Count;
+            }
+
+            double progress = (20 * current) / total; // it is calculated, not incremented. we know how many files we downloaded and we shall but one problem is dynamic files
+             // for simplicity I do one x per %5
+            // at every file download we might add to our progress so the target file count can also increase
+            int progressIndicator = Convert.ToInt32(Math.Floor(progress));
+            _console.Progress(ConsoleColor.Cyan, "\r..: {0}/{1} :.. [{2}{3}] {4}", 
+                current,
+                total,
+                new string('x', progressIndicator), 
+                new string(' ', 20 - progressIndicator), 
+                message);
         }
 
         /// <summary>

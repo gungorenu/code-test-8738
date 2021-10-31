@@ -239,5 +239,24 @@ namespace CodeTest_Tests
         }
 
 
+        [Test]
+        public void ProgressUpdate_Empty_NoX()
+        {
+            // skipping for time constraints
+        }
+
+
+        [Test]
+        public void ProgressUpdate_Full_CountX()
+        {
+            // skipping for time constraints
+        }
+
+        [Test]
+        public void ProgressUpdate_Half_CountX()
+        {
+            // skipping for time constraints
+        }
+
     }
 }
