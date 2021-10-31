@@ -3,10 +3,15 @@ using System.IO;
 
 namespace CodeTest
 {
+    /// <summary>
+    /// File operation handler
+    /// </summary>
+    /// <remarks>Comments are on interface</remarks>
     internal class FileManager : IFileManager
     {
         public string BaseFolder => Environment.CurrentDirectory;
         internal string TraceFile => System.IO.Path.Combine(BaseFolder, "trace.log");
+
 
         public void Save(string fileLocation, byte[] data)
         {

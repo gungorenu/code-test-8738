@@ -4,6 +4,10 @@ using System.Text;
 
 namespace CodeTest
 {
+    /// <summary>
+    /// Console handler, uses System.Console
+    /// </summary>
+    /// <remarks>Comments are on interface</remarks>
     internal class Console : IConsole
     {
         public bool IsVerbose { get; set; }

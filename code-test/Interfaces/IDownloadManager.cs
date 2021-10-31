@@ -8,7 +8,7 @@ namespace CodeTest
     /// <summary>
     /// Main entry point for downloading a site
     /// </summary>
-    internal interface IDownloadManager
+    internal interface IDownloadManager: IDisposable
     {
         /// <summary>
         /// Cancellation token

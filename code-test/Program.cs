@@ -1,6 +1,7 @@
 ﻿using System;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("code-test-tests")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DynamicProxyGenAssembly2")] // sometimes I hate this InternalsVisibleTo
 namespace CodeTest
 {
     internal static class Program
@@ -11,7 +12,8 @@ namespace CodeTest
             {
                 IConsole console = new Console();
                 IFileManager fileMgr = new FileManager();
-                IDownloadManager downloadMgr = new DownloadManager(console, fileMgr);
+                IWebClient webClient = new WebClient(fileMgr);
+                IDownloadManager downloadMgr = new DownloadManager(console, fileMgr, webClient);
 
                 System.Console.WriteLine("Enter a website to download: ");
                 string site = System.Console.ReadLine();
